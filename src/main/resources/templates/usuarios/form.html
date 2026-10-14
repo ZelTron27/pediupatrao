@@ -61,13 +61,14 @@
 
                 <!-- Role -->
                 <div class="mb-4">
-                    <label for="role" class="form-label fw-medium">
+                    <label for="perfil" class="form-label fw-medium">
                         <i class="bi bi-shield me-1"></i>Perfil
                     </label>
-                    <select id="role" class="form-select" th:field="*{role}" required>
+                    <select id="perfil" class="form-select" th:field="*{perfil}" required>
                         <option value="" disabled>Selecione um perfil</option>
                         <option value="ADMIN">ADMIN</option>
-                        <option value="USER">USER</option>
+                        <option value="GERENTE">GERENTE</option>
+                        <option value="ATENDENTE">ATENDENTE</option>
                     </select>
                 </div>
 
