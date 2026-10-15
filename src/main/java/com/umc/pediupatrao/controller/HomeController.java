@@ -5,6 +5,7 @@ import org.slf4j.LoggerFactory;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.entity.Usuario;
 import com.umc.pediupatrao.service.ClienteService;
 import com.umc.pediupatrao.service.PedidoService;
@@ -19,6 +20,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -152,6 +154,20 @@ public class HomeController {
         } catch (RegraDaCasaException e) {
             redirectAttributes.addFlashAttribute("erro", e.getMessage());
             return "redirect:/pedidos/novo";
+        }
+        return "redirect:/pedidos";
+    }
+
+    @PostMapping("/pedidos/{id}/status")
+    public String atualizarStatusPedido(@PathVariable String id,
+            @RequestParam StatusPedido status,
+            @RequestParam(required = false) String justificativa,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.atualizarStatus(id, status, justificativa);
+            redirectAttributes.addFlashAttribute("sucesso", "Status do pedido atualizado para " + status + ".");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
         }
         return "redirect:/pedidos";
     }
