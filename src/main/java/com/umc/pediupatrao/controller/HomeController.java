@@ -134,6 +134,28 @@ public class HomeController {
         return "layout";
     }
 
+    @GetMapping("/pedidos/novo")
+    public String novoPedidoForm(Model model) {
+        model.addAttribute("pedido", new Pedido());
+        model.addAttribute("clientes", clienteService.listarClientes());
+        model.addAttribute("produtos", produtoService.listarProdutos());
+        model.addAttribute("content", "pedidos/form :: content");
+        return "layout";
+    }
+
+    @PostMapping("/pedidos/salvar")
+    public String salvarPedido(@ModelAttribute Pedido pedido,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.criarPedido(pedido);
+            redirectAttributes.addFlashAttribute("sucesso", "Pedido criado com sucesso!");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+            return "redirect:/pedidos/novo";
+        }
+        return "redirect:/pedidos";
+    }
+
     // ========================
     // PRODUTOS
     // ========================
