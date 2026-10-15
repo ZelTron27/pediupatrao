@@ -18,7 +18,7 @@ public class Pedido {
     private String id;
     private String clienteId;
     private String tipoPizza;
-    private String status;
+    private StatusPedido status;
     private int quantidade;
     private String sabor;
     private List<ItemPedido> itens = new ArrayList<>();
@@ -28,4 +28,7 @@ public class Pedido {
     private Double valorTotal;
     private String responsavel;
     private LocalDateTime dataHoraEntrada;
+    private String responsavelSaida;
+    private LocalDateTime dataHoraSaida;
+    private String justificativaCancelamento;
 }
