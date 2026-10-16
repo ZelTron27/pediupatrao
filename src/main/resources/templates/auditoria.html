@@ -48,7 +48,7 @@
                             <div class="small" th:each="campo : ${evento.campos}">
                                 <strong th:text="${campo.campo()}"></strong>:
                                 <span class="text-muted" th:text="${campo.anterior() ?: '-'}"></span>
-                                &rarr;
+                                -&gt;
                                 <span th:text="${campo.novo() ?: '-'}"></span>
                             </div>
                         </td>
