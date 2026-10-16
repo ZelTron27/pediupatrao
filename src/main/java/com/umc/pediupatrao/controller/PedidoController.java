@@ -1,6 +1,8 @@
 package com.umc.pediupatrao.controller;
 
+import com.umc.pediupatrao.dto.DescontoPedido;
 import com.umc.pediupatrao.entity.Pedido;
+import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.service.PedidoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
@@ -24,8 +26,14 @@ public class PedidoController {
     }
 
     @PutMapping("/{id}/status")
-    public Pedido atualizarStatus(@PathVariable String id, @RequestParam String status) {
-        return pedidoService.atualizarStatus(id, status);
+    public Pedido atualizarStatus(@PathVariable String id, @RequestParam StatusPedido status,
+            @RequestParam(required = false) String justificativa) {
+        return pedidoService.atualizarStatus(id, status, justificativa);
+    }
+
+    @PatchMapping("/{id}/desconto")
+    public Pedido aplicarDesconto(@PathVariable String id, @RequestBody DescontoPedido desconto) {
+        return pedidoService.aplicarDesconto(id, desconto);
     }
     
     

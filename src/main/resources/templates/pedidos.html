@@ -11,6 +11,9 @@
         <h2 class="fw-bold mb-0">
             <i class="bi bi-bag me-2 text-primary"></i>Pedidos
         </h2>
+        <a href="/pedidos/novo" class="btn btn-primary">
+            <i class="bi bi-plus-lg me-1"></i> Novo Pedido
+        </a>
     </div>
 
     <!-- Mensagens de feedback -->
@@ -33,16 +36,18 @@
                     <tr>
                         <th class="ps-4">ID</th>
                         <th>Cliente ID</th>
-                        <th>Tipo de Pizza</th>
-                        <th>Sabor</th>
-                        <th>Quantidade</th>
+                        <th>Itens</th>
+                        <th>Valor Total</th>
+                        <th>Responsável</th>
+                        <th>Entrada</th>
+                        <th>Saída</th>
                         <th>Status</th>
                     </tr>
                 </thead>
                 <tbody>
                     <!-- Lista vazia -->
                     <tr th:if="${#lists.isEmpty(pedidos)}">
-                        <td colspan="6" class="text-center text-muted py-5">
+                        <td colspan="8" class="text-center text-muted py-5">
                             <i class="bi bi-inbox fs-3 d-block mb-2"></i>
                             Nenhum pedido encontrado.
                         </td>
@@ -51,16 +56,52 @@
                     <tr th:each="pedido : ${pedidos}">
                         <td class="ps-4 text-muted" th:text="${pedido.id}"></td>
                         <td th:text="${pedido.clienteId}"></td>
-                        <td th:text="${pedido.tipoPizza}"></td>
-                        <td th:text="${pedido.sabor}"></td>
-                        <td th:text="${pedido.quantidade}"></td>
+                        <td>
+                            <div th:each="item : ${pedido.itens}"
+                                 th:text="${item.quantidade + 'x ' + item.nomeProduto}"></div>
+                        </td>
+                        <td>
+                            <div th:text="${pedido.valorTotal != null} ? ${'R$ ' + #numbers.formatDecimal(pedido.valorTotal, 1, 2, 'COMMA')} : '-'"></div>
+                            <div class="small text-muted" th:if="${pedido.percentualDesconto != null and pedido.percentualDesconto > 0}"
+                                 th:text="${'Desconto ' + #numbers.formatDecimal(pedido.percentualDesconto, 1, 2, 'COMMA') + '%'}"></div>
+                            <form th:if="${limiteDesconto > 0 and pedido.status != null and pedido.status.proximos().![name()].contains('CANCELADO')}"
+                                  th:action="@{/pedidos/{id}/desconto(id=${pedido.id})}" method="post"
+                                  class="d-flex gap-1 mt-2">
+                                <input type="number" name="percentual" class="form-control form-control-sm"
+                                       min="0" th:max="${limiteDesconto}" step="0.01" placeholder="%" required>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-percent"></i>
+                                </button>
+                            </form>
+                        </td>
+                        <td th:text="${pedido.responsavel}"></td>
+                        <td th:text="${pedido.dataHoraEntrada != null} ? ${#temporals.format(pedido.dataHoraEntrada, 'dd/MM/yyyy HH:mm')} : '-'"></td>
+                        <td>
+                            <div th:if="${pedido.dataHoraSaida != null}"
+                                 th:text="${#temporals.format(pedido.dataHoraSaida, 'dd/MM/yyyy HH:mm')}"></div>
+                            <div class="text-muted small" th:text="${pedido.responsavelSaida ?: '-'}"></div>
+                        </td>
                         <td>
                             <span class="badge"
-                                  th:classappend="${pedido.status == 'ENTREGUE'} ? 'bg-success' :
-                                                  (${pedido.status == 'CANCELADO'} ? 'bg-danger' :
-                                                  (${pedido.status == 'EM_PREPARO'} ? 'bg-warning text-dark' : 'bg-secondary'))"
+                                  th:classappend="${pedido.status?.name() == 'FINALIZADO'} ? 'bg-success' :
+                                                  (${pedido.status?.name() == 'CANCELADO'} ? 'bg-danger' :
+                                                  (${pedido.status?.name() == 'EM_PREPARACAO'} ? 'bg-warning text-dark' : 'bg-secondary'))"
                                   th:text="${pedido.status}">
                             </span>
+                            <div class="small text-muted mt-1" th:if="${pedido.justificativaCancelamento != null}"
+                                 th:text="${pedido.justificativaCancelamento}"></div>
+                            <form th:if="${pedido.status != null and !pedido.status.proximos().isEmpty()}"
+                                  th:action="@{/pedidos/{id}/status(id=${pedido.id})}" method="post"
+                                  class="d-flex gap-1 mt-2">
+                                <select name="status" class="form-select form-select-sm">
+                                    <option th:each="s : ${pedido.status.proximos()}" th:value="${s}" th:text="${s}"></option>
+                                </select>
+                                <input type="text" name="justificativa" class="form-control form-control-sm"
+                                       placeholder="Justificativa (cancelamento)">
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-arrow-right"></i>
+                                </button>
+                            </form>
                         </td>
                     </tr>
                 </tbody>

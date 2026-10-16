@@ -2,22 +2,28 @@ package com.umc.pediupatrao.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.umc.pediupatrao.dto.DescontoPedido;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
+import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.entity.Usuario;
 import com.umc.pediupatrao.service.ClienteService;
 import com.umc.pediupatrao.service.PedidoService;
 import com.umc.pediupatrao.service.ProdutoService;
+import com.umc.pediupatrao.service.RegraDaCasaException;
+import com.umc.pediupatrao.service.TrilhaAuditoriaService;
 import com.umc.pediupatrao.service.UsuarioService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
@@ -36,6 +42,9 @@ public class HomeController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private TrilhaAuditoriaService trilhaAuditoriaService;
 
     @GetMapping("/login")
     public String login() {
@@ -87,8 +96,12 @@ public class HomeController {
     @PostMapping("/usuarios/salvar")
     public String salvarUsuario(@ModelAttribute Usuario usuario,
             RedirectAttributes redirectAttributes) {
-        usuarioService.salvarUsuario(usuario);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário criado com sucesso!");
+        try {
+            usuarioService.salvarUsuario(usuario);
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário criado com sucesso!");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
@@ -96,16 +109,24 @@ public class HomeController {
     public String atualizarUsuario(@PathVariable String id,
             @ModelAttribute Usuario usuario,
             RedirectAttributes redirectAttributes) {
-        usuarioService.atualizarUsuario(id, usuario);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário atualizado com sucesso!");
+        try {
+            usuarioService.atualizarUsuario(id, usuario);
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário atualizado com sucesso!");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
     @PostMapping("/usuarios/deletar/{id}")
     public String deletarUsuario(@PathVariable String id,
             RedirectAttributes redirectAttributes) {
-        usuarioService.deletarUsuario(id);
-        redirectAttributes.addFlashAttribute("sucesso", "Usuário removido com sucesso!");
+        try {
+            usuarioService.deletarUsuario(id);
+            redirectAttributes.addFlashAttribute("sucesso", "Usuário removido com sucesso!");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
         return "redirect:/usuarios";
     }
 
@@ -116,8 +137,69 @@ public class HomeController {
     public String pedidos(Model model) {
         List<Pedido> pedidos = pedidoService.listarPedidos();
         model.addAttribute("pedidos", pedidos);
+        model.addAttribute("limiteDesconto", pedidoService.limiteDesconto());
         model.addAttribute("content", "pedidos :: content");
         log.info("Carregando fragmento: pedidos :: content");
+        return "layout";
+    }
+
+    @GetMapping("/pedidos/novo")
+    public String novoPedidoForm(Model model) {
+        model.addAttribute("pedido", new Pedido());
+        model.addAttribute("clientes", clienteService.listarClientes());
+        model.addAttribute("produtos", produtoService.listarProdutos());
+        model.addAttribute("content", "pedidos/form :: content");
+        return "layout";
+    }
+
+    @PostMapping("/pedidos/salvar")
+    public String salvarPedido(@ModelAttribute Pedido pedido,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.criarPedido(pedido);
+            redirectAttributes.addFlashAttribute("sucesso", "Pedido criado com sucesso!");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+            return "redirect:/pedidos/novo";
+        }
+        return "redirect:/pedidos";
+    }
+
+    @PostMapping("/pedidos/{id}/status")
+    public String atualizarStatusPedido(@PathVariable String id,
+            @RequestParam StatusPedido status,
+            @RequestParam(required = false) String justificativa,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.atualizarStatus(id, status, justificativa);
+            redirectAttributes.addFlashAttribute("sucesso", "Status do pedido atualizado para " + status + ".");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        } catch (AccessDeniedException e) {
+            redirectAttributes.addFlashAttribute("erro", "Somente o GERENTE pode cancelar pedidos.");
+        }
+        return "redirect:/pedidos";
+    }
+
+    @PostMapping("/pedidos/{id}/desconto")
+    public String aplicarDescontoPedido(@PathVariable String id,
+            @ModelAttribute DescontoPedido desconto,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.aplicarDesconto(id, desconto);
+            redirectAttributes.addFlashAttribute("sucesso", "Desconto de " + desconto.percentual() + "% aplicado ao pedido.");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        } catch (AccessDeniedException e) {
+            redirectAttributes.addFlashAttribute("erro", "Somente o GERENTE pode conceder desconto.");
+        }
+        return "redirect:/pedidos";
+    }
+
+    @GetMapping("/auditoria")
+    public String auditoria(Model model) {
+        model.addAttribute("eventos", trilhaAuditoriaService.consultar());
+        model.addAttribute("content", "auditoria :: content");
         return "layout";
     }
 
