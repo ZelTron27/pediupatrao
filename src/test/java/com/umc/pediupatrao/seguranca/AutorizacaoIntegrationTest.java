@@ -132,7 +132,12 @@ class AutorizacaoIntegrationTest {
                         .contentType(MediaType.APPLICATION_JSON).content("{\"percentual\":10}"))
                 .andExpect(status().isForbidden());
         mvc.perform(post("/pedidos/p1/desconto").with(ADMIN).with(csrf()).param("percentual", "10"))
-                .andExpect(status().isForbidden());
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("erro", "Somente o GERENTE pode conceder desconto."));
+        mvc.perform(post("/pedidos/p1/status").with(ADMIN).with(csrf())
+                        .param("status", "CANCELADO").param("justificativa", "x"))
+                .andExpect(status().is3xxRedirection())
+                .andExpect(flash().attribute("erro", "Somente o GERENTE pode cancelar pedidos."));
         mvc.perform(put("/api/pedidos/p1/status").with(ADMIN).with(csrf())
                         .param("status", "CANCELADO").param("justificativa", "x"))
                 .andExpect(status().isForbidden());
