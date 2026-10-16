@@ -1,11 +1,13 @@
 package com.umc.pediupatrao.service;
 
 import com.umc.pediupatrao.dto.DescontoPedido;
+import com.umc.pediupatrao.entity.EventoAuditoria.CampoAlterado;
 import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Perfil;
 import com.umc.pediupatrao.entity.Produto;
 import com.umc.pediupatrao.entity.StatusPedido;
+import com.umc.pediupatrao.entity.TipoEvento;
 import com.umc.pediupatrao.repository.ClienteRepository;
 import com.umc.pediupatrao.repository.PedidoRepository;
 import com.umc.pediupatrao.repository.ProdutoRepository;
@@ -17,6 +19,7 @@ import org.springframework.stereotype.Service;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class PedidoService {
@@ -29,6 +32,9 @@ public class PedidoService {
 
     @Autowired
     private ProdutoRepository produtoRepository;
+
+    @Autowired
+    private TrilhaAuditoria trilhaAuditoria;
 
     @PreAuthorize("hasAnyRole('GERENTE', 'ATENDENTE')")
     public Pedido criarPedido(Pedido pedido) {
@@ -59,7 +65,17 @@ public class PedidoService {
         pedido.setResponsavelSaida(null);
         pedido.setDataHoraSaida(null);
         pedido.setJustificativaCancelamento(null);
-        return pedidoRepository.save(pedido);
+        Pedido salvo = pedidoRepository.save(pedido);
+
+        String resumoItens = salvo.getItens().stream()
+                .map(i -> i.getQuantidade() + "x " + i.getNomeProduto())
+                .collect(Collectors.joining(", "));
+        trilhaAuditoria.registrar(TipoEvento.INCLUSAO_PEDIDO, "Pedido", salvo.getId(), null, List.of(
+                CampoAlterado.de("clienteId", null, salvo.getClienteId()),
+                CampoAlterado.de("itens", null, resumoItens),
+                CampoAlterado.de("valorTotal", null, salvo.getValorTotal()),
+                CampoAlterado.de("status", null, salvo.getStatus())));
+        return salvo;
     }
 
     private ItemPedido montarItem(ItemPedido enviado) {
@@ -95,7 +111,7 @@ public class PedidoService {
         return pedidoRepository.findAll();
     }
 
-    @PreAuthorize("hasAnyRole('GERENTE', 'ATENDENTE')")
+    @PreAuthorize("hasRole('GERENTE') or (hasRole('ATENDENTE') and #novoStatus?.name() != 'CANCELADO')")
     public Pedido atualizarStatus(String id, StatusPedido novoStatus, String justificativa) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RegraDaCasaException("Pedido não encontrado."));
@@ -111,12 +127,8 @@ public class PedidoService {
         }
 
         Authentication usuario = usuarioLogado();
+        StatusPedido statusAnterior = pedido.getStatus();
         if (novoStatus == StatusPedido.CANCELADO) {
-            boolean gerente = usuario.getAuthorities().stream()
-                    .anyMatch(a -> a.getAuthority().equals("ROLE_GERENTE"));
-            if (!gerente) {
-                throw new RegraDaCasaException("Somente o GERENTE pode cancelar pedidos.");
-            }
             if (justificativa == null || justificativa.isBlank()) {
                 throw new RegraDaCasaException("Informe a justificativa do cancelamento.");
             }
@@ -124,23 +136,28 @@ public class PedidoService {
         } else if (justificativa != null && !justificativa.isBlank()) {
             throw new RegraDaCasaException("Para cancelar, escolha CANCELADO no status. A justificativa só é usada no cancelamento.");
         }
+        List<CampoAlterado> campos = new ArrayList<>();
+        campos.add(CampoAlterado.de("status", statusAnterior, novoStatus));
         if (novoStatus == StatusPedido.SAIU_PARA_ENTREGA || novoStatus == StatusPedido.RETIRADO) {
             pedido.setResponsavelSaida(usuario.getName());
             pedido.setDataHoraSaida(LocalDateTime.now());
+            campos.add(CampoAlterado.de("responsavelSaida", null, pedido.getResponsavelSaida()));
+            campos.add(CampoAlterado.de("dataHoraSaida", null, pedido.getDataHoraSaida()));
         }
 
         pedido.setStatus(novoStatus);
-        return pedidoRepository.save(pedido);
+        Pedido salvo = pedidoRepository.save(pedido);
+        trilhaAuditoria.registrar(
+                novoStatus == StatusPedido.CANCELADO ? TipoEvento.CANCELAMENTO : TipoEvento.MUDANCA_STATUS,
+                "Pedido", salvo.getId(), salvo.getJustificativaCancelamento(), campos);
+        return salvo;
     }
 
-    @PreAuthorize("hasAnyRole('GERENTE', 'ATENDENTE')")
+    @PreAuthorize("hasRole('GERENTE')")
     public Pedido aplicarDesconto(String id, DescontoPedido desconto) {
         Pedido pedido = pedidoRepository.findById(id)
                 .orElseThrow(() -> new RegraDaCasaException("Pedido não encontrado."));
         int limite = limiteDesconto();
-        if (limite == 0) {
-            throw new RegraDaCasaException("Somente o GERENTE pode conceder desconto.");
-        }
         if (desconto == null || desconto.percentual() == null
                 || desconto.percentual() < 0 || desconto.percentual() > limite) {
             throw new RegraDaCasaException("O desconto deve ficar entre 0% e " + limite + "%.");
@@ -152,10 +169,20 @@ public class PedidoService {
             throw new RegraDaCasaException("Pedido sem valores calculados.");
         }
 
+        Double percentualAnterior = pedido.getPercentualDesconto();
+        Double descontoAnterior = pedido.getValorDesconto();
+        Double totalAnterior = pedido.getValorTotal();
+
         pedido.setPercentualDesconto(desconto.percentual());
         pedido.setValorDesconto(arredondar(pedido.getSubtotal() * desconto.percentual() / 100));
         pedido.setValorTotal(arredondar(pedido.getSubtotal() - pedido.getValorDesconto()));
-        return pedidoRepository.save(pedido);
+        Pedido salvo = pedidoRepository.save(pedido);
+
+        trilhaAuditoria.registrar(TipoEvento.DESCONTO, "Pedido", salvo.getId(), null, List.of(
+                CampoAlterado.de("percentualDesconto", percentualAnterior, salvo.getPercentualDesconto()),
+                CampoAlterado.de("valorDesconto", descontoAnterior, salvo.getValorDesconto()),
+                CampoAlterado.de("valorTotal", totalAnterior, salvo.getValorTotal())));
+        return salvo;
     }
 
     public int limiteDesconto() {

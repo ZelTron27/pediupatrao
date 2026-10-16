@@ -12,9 +12,11 @@ import com.umc.pediupatrao.service.ClienteService;
 import com.umc.pediupatrao.service.PedidoService;
 import com.umc.pediupatrao.service.ProdutoService;
 import com.umc.pediupatrao.service.RegraDaCasaException;
+import com.umc.pediupatrao.service.TrilhaAuditoria;
 import com.umc.pediupatrao.service.UsuarioService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -40,6 +42,9 @@ public class HomeController {
 
     @Autowired
     private UsuarioService usuarioService;
+
+    @Autowired
+    private TrilhaAuditoria trilhaAuditoria;
 
     @GetMapping("/login")
     public String login() {
@@ -170,6 +175,8 @@ public class HomeController {
             redirectAttributes.addFlashAttribute("sucesso", "Status do pedido atualizado para " + status + ".");
         } catch (RegraDaCasaException e) {
             redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        } catch (AccessDeniedException e) {
+            redirectAttributes.addFlashAttribute("erro", "Somente o GERENTE pode cancelar pedidos.");
         }
         return "redirect:/pedidos";
     }
@@ -183,8 +190,17 @@ public class HomeController {
             redirectAttributes.addFlashAttribute("sucesso", "Desconto de " + desconto.percentual() + "% aplicado ao pedido.");
         } catch (RegraDaCasaException e) {
             redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        } catch (AccessDeniedException e) {
+            redirectAttributes.addFlashAttribute("erro", "Somente o GERENTE pode conceder desconto.");
         }
         return "redirect:/pedidos";
+    }
+
+    @GetMapping("/auditoria")
+    public String auditoria(Model model) {
+        model.addAttribute("eventos", trilhaAuditoria.consultar());
+        model.addAttribute("content", "auditoria :: content");
+        return "layout";
     }
 
     // ========================
