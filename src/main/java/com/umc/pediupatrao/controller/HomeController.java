@@ -12,7 +12,7 @@ import com.umc.pediupatrao.service.ClienteService;
 import com.umc.pediupatrao.service.PedidoService;
 import com.umc.pediupatrao.service.ProdutoService;
 import com.umc.pediupatrao.service.RegraDaCasaException;
-import com.umc.pediupatrao.service.TrilhaAuditoria;
+import com.umc.pediupatrao.service.TrilhaAuditoriaService;
 import com.umc.pediupatrao.service.UsuarioService;
 import java.util.List;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -44,7 +44,7 @@ public class HomeController {
     private UsuarioService usuarioService;
 
     @Autowired
-    private TrilhaAuditoria trilhaAuditoria;
+    private TrilhaAuditoriaService trilhaAuditoriaService;
 
     @GetMapping("/login")
     public String login() {
@@ -198,7 +198,7 @@ public class HomeController {
 
     @GetMapping("/auditoria")
     public String auditoria(Model model) {
-        model.addAttribute("eventos", trilhaAuditoria.consultar());
+        model.addAttribute("eventos", trilhaAuditoriaService.consultar());
         model.addAttribute("content", "auditoria :: content");
         return "layout";
     }
