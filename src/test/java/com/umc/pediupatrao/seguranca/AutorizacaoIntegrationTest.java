@@ -2,6 +2,8 @@ package com.umc.pediupatrao.seguranca;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -13,6 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.flash;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.redirectedUrlPattern;
@@ -342,6 +345,50 @@ class AutorizacaoIntegrationTest {
         mvc.perform(get("/auditoria").with(ATENDENTE)).andExpect(status().isForbidden());
         mvc.perform(get("/auditoria").with(ADMIN)).andExpect(status().isOk());
         mvc.perform(get("/auditoria").with(GERENTE)).andExpect(status().isOk());
+    }
+
+    @Test
+    void apiRespondeRegraVioladaComBadRequestEMensagem() throws Exception {
+        mvc.perform(patch("/api/pedidos/p1/desconto").with(GERENTE).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"percentual\":25}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O desconto deve ficar entre 0% e 20%."));
+        mvc.perform(put("/api/pedidos/p1/status").with(GERENTE).with(csrf()).param("status", "FINALIZADO"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("Não é permitido passar o pedido de RECEBIDO para FINALIZADO."));
+    }
+
+    @Test
+    void apiRespondeAcessoNegadoComMensagem() throws Exception {
+        mvc.perform(put("/api/pedidos/p1/status").with(ATENDENTE).with(csrf())
+                        .param("status", "CANCELADO").param("justificativa", "x"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.erro").value("Seu perfil não tem permissão para esta operação."));
+    }
+
+    @Test
+    void apiRespondeNotFoundAoAtualizarClienteInexistente() throws Exception {
+        when(clienteRepository.findById("zz")).thenReturn(Optional.empty());
+
+        mvc.perform(put("/api/clientes/zz").with(ATENDENTE).with(csrf())
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"nome\":\"Ana\"}"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.erro").value("Cliente não encontrado para atualização."));
+    }
+
+    @Test
+    void menuMostraSomenteTelasPermitidasAoPerfil() throws Exception {
+        mvc.perform(get("/").with(ATENDENTE))
+                .andExpect(content().string(containsString("href=\"/clientes\"")))
+                .andExpect(content().string(not(containsString("href=\"/auditoria\""))))
+                .andExpect(content().string(not(containsString("href=\"/usuarios\""))));
+        mvc.perform(get("/").with(GERENTE))
+                .andExpect(content().string(containsString("href=\"/auditoria\"")))
+                .andExpect(content().string(not(containsString("href=\"/usuarios\""))));
+        mvc.perform(get("/").with(ADMIN))
+                .andExpect(content().string(containsString("href=\"/usuarios\"")))
+                .andExpect(content().string(containsString("href=\"/auditoria\"")))
+                .andExpect(content().string(not(containsString("href=\"/clientes\""))));
     }
 
     @Test
