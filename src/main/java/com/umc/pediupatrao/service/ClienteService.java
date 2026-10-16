@@ -36,7 +36,7 @@ public class ClienteService {
     private ClienteRepository clienteRepository;
 
     @Autowired
-    private TrilhaAuditoria trilhaAuditoria;
+    private TrilhaAuditoriaService trilhaAuditoriaService;
 
     public Cliente novoCliente(Cliente cliente) {
         return clienteRepository.save(cliente);
@@ -60,7 +60,7 @@ public class ClienteService {
         // Se o cliente não tem ID (novo cliente), salva como novo
         if (cliente.getId() == null) {
             Cliente salvo = clienteRepository.save(cliente);  // Cria um novo cliente
-            trilhaAuditoria.registrar(TipoEvento.INCLUSAO_CLIENTE, "Cliente", salvo.getId(), null,
+            trilhaAuditoriaService.registrar(TipoEvento.INCLUSAO_CLIENTE, "Cliente", salvo.getId(), null,
                     diferencas(new Cliente(), salvo));
             return salvo;
         } // Se já tem ID (cliente existente), atualiza
@@ -71,7 +71,7 @@ public class ClienteService {
             Cliente salvo = clienteRepository.save(cliente);  // Atualiza o cliente existente
             List<CampoAlterado> campos = diferencas(anterior, salvo);
             if (!campos.isEmpty()) {
-                trilhaAuditoria.registrar(TipoEvento.ALTERACAO_CLIENTE, "Cliente", salvo.getId(), null, campos);
+                trilhaAuditoriaService.registrar(TipoEvento.ALTERACAO_CLIENTE, "Cliente", salvo.getId(), null, campos);
             }
             return salvo;
         }

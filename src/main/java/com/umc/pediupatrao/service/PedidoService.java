@@ -34,7 +34,7 @@ public class PedidoService {
     private ProdutoRepository produtoRepository;
 
     @Autowired
-    private TrilhaAuditoria trilhaAuditoria;
+    private TrilhaAuditoriaService trilhaAuditoriaService;
 
     @PreAuthorize("hasAnyRole('GERENTE', 'ATENDENTE')")
     public Pedido criarPedido(Pedido pedido) {
@@ -70,7 +70,7 @@ public class PedidoService {
         String resumoItens = salvo.getItens().stream()
                 .map(i -> i.getQuantidade() + "x " + i.getNomeProduto())
                 .collect(Collectors.joining(", "));
-        trilhaAuditoria.registrar(TipoEvento.INCLUSAO_PEDIDO, "Pedido", salvo.getId(), null, List.of(
+        trilhaAuditoriaService.registrar(TipoEvento.INCLUSAO_PEDIDO, "Pedido", salvo.getId(), null, List.of(
                 CampoAlterado.de("clienteId", null, salvo.getClienteId()),
                 CampoAlterado.de("itens", null, resumoItens),
                 CampoAlterado.de("valorTotal", null, salvo.getValorTotal()),
@@ -147,7 +147,7 @@ public class PedidoService {
 
         pedido.setStatus(novoStatus);
         Pedido salvo = pedidoRepository.save(pedido);
-        trilhaAuditoria.registrar(
+        trilhaAuditoriaService.registrar(
                 novoStatus == StatusPedido.CANCELADO ? TipoEvento.CANCELAMENTO : TipoEvento.MUDANCA_STATUS,
                 "Pedido", salvo.getId(), salvo.getJustificativaCancelamento(), campos);
         return salvo;
@@ -178,7 +178,7 @@ public class PedidoService {
         pedido.setValorTotal(arredondar(pedido.getSubtotal() - pedido.getValorDesconto()));
         Pedido salvo = pedidoRepository.save(pedido);
 
-        trilhaAuditoria.registrar(TipoEvento.DESCONTO, "Pedido", salvo.getId(), null, List.of(
+        trilhaAuditoriaService.registrar(TipoEvento.DESCONTO, "Pedido", salvo.getId(), null, List.of(
                 CampoAlterado.de("percentualDesconto", percentualAnterior, salvo.getPercentualDesconto()),
                 CampoAlterado.de("valorDesconto", descontoAnterior, salvo.getValorDesconto()),
                 CampoAlterado.de("valorTotal", totalAnterior, salvo.getValorTotal())));
