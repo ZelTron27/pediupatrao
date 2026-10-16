@@ -56,6 +56,8 @@ public class SecurityConfig {
                         .requestMatchers("/clientes/**", "/api/clientes/**").hasRole("ATENDENTE")
                         .requestMatchers(HttpMethod.GET, "/pedidos", "/api/pedidos/**").hasAnyRole("ADMIN", "GERENTE", "ATENDENTE")
                         .requestMatchers("/pedidos/**", "/api/pedidos/**").hasAnyRole("GERENTE", "ATENDENTE")
+                        .requestMatchers(HttpMethod.GET, "/auditoria").hasAnyRole("ADMIN", "GERENTE")
+                        .requestMatchers("/auditoria/**").denyAll()
                         .anyRequest().authenticated()
                 )
                 .formLogin(form -> form
