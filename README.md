@@ -79,14 +79,14 @@ As senhas são gravadas criptografadas com BCrypt. Os usuários só são criados
 
 | Operação                                   | ADMIN | GERENTE | ATENDENTE |
 |--------------------------------------------|:-----:|:-------:|:---------:|
-| Administrar usuários e atribuir perfis     | ✔     |         |           |
-| Consultar pedidos                          | ✔     | ✔       | ✔         |
-| Registrar pedidos e avançar o status       |       | ✔       | ✔         |
-| Cancelar pedidos                           |       | ✔       |           |
-| Aplicar desconto (até 20%)                 |       | ✔       |           |
-| Consultar clientes                         |       | ✔       | ✔         |
-| Cadastrar e alterar clientes               |       |         | ✔         |
-| Consultar a auditoria                      | ✔     | ✔       |           |
+| Administrar usuários e atribuir perfis     | X     |         |           |
+| Consultar pedidos                          | X     | X       | X         |
+| Registrar pedidos e avançar o status       |       | X       | X         |
+| Cancelar pedidos                           |       | X       |           |
+| Aplicar desconto (até 20%)                 |       | X       |           |
+| Consultar clientes                         |       | X       | X         |
+| Cadastrar e alterar clientes               |       |         | X         |
+| Consultar a auditoria                      | X     | X       |           |
 
 As regras são aplicadas no backend em duas camadas:
 
