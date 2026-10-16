@@ -6,6 +6,11 @@ O projeto original já cadastrava clientes, produtos e pedidos. Nesta versão fo
 
 **Tecnologias:** Java 21+, Spring Boot 3.4, Spring Security, Spring Data MongoDB, Thymeleaf, Lombok, JUnit 5 e Mockito.
 
+| Turma | 8B Engenharia de Software |
+|-------|---------------------------|
+| Autor | Luis Augusto Berlinck de Camargo |
+| RGM   | 11251405066 |
+
 ---
 
 ## Sumário
