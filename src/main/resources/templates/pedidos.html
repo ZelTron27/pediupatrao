@@ -60,7 +60,20 @@
                             <div th:each="item : ${pedido.itens}"
                                  th:text="${item.quantidade + 'x ' + item.nomeProduto}"></div>
                         </td>
-                        <td th:text="${pedido.valorTotal != null} ? ${'R$ ' + #numbers.formatDecimal(pedido.valorTotal, 1, 2, 'COMMA')} : '-'"></td>
+                        <td>
+                            <div th:text="${pedido.valorTotal != null} ? ${'R$ ' + #numbers.formatDecimal(pedido.valorTotal, 1, 2, 'COMMA')} : '-'"></div>
+                            <div class="small text-muted" th:if="${pedido.percentualDesconto != null and pedido.percentualDesconto > 0}"
+                                 th:text="${'Desconto ' + #numbers.formatDecimal(pedido.percentualDesconto, 1, 2, 'COMMA') + '%'}"></div>
+                            <form th:if="${limiteDesconto > 0 and pedido.status != null and pedido.status.proximos().![name()].contains('CANCELADO')}"
+                                  th:action="@{/pedidos/{id}/desconto(id=${pedido.id})}" method="post"
+                                  class="d-flex gap-1 mt-2">
+                                <input type="number" name="percentual" class="form-control form-control-sm"
+                                       min="0" th:max="${limiteDesconto}" step="0.01" placeholder="%" required>
+                                <button type="submit" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-percent"></i>
+                                </button>
+                            </form>
+                        </td>
                         <td th:text="${pedido.responsavel}"></td>
                         <td th:text="${pedido.dataHoraEntrada != null} ? ${#temporals.format(pedido.dataHoraEntrada, 'dd/MM/yyyy HH:mm')} : '-'"></td>
                         <td>

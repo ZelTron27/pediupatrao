@@ -1,7 +1,9 @@
 package com.umc.pediupatrao.service;
 
+import com.umc.pediupatrao.dto.DescontoPedido;
 import com.umc.pediupatrao.entity.ItemPedido;
 import com.umc.pediupatrao.entity.Pedido;
+import com.umc.pediupatrao.entity.Perfil;
 import com.umc.pediupatrao.entity.Produto;
 import com.umc.pediupatrao.entity.StatusPedido;
 import com.umc.pediupatrao.repository.ClienteRepository;
@@ -119,6 +121,8 @@ public class PedidoService {
                 throw new RegraDaCasaException("Informe a justificativa do cancelamento.");
             }
             pedido.setJustificativaCancelamento(justificativa.trim());
+        } else if (justificativa != null && !justificativa.isBlank()) {
+            throw new RegraDaCasaException("Para cancelar, escolha CANCELADO no status. A justificativa só é usada no cancelamento.");
         }
         if (novoStatus == StatusPedido.SAIU_PARA_ENTREGA || novoStatus == StatusPedido.RETIRADO) {
             pedido.setResponsavelSaida(usuario.getName());
@@ -127,6 +131,38 @@ public class PedidoService {
 
         pedido.setStatus(novoStatus);
         return pedidoRepository.save(pedido);
+    }
+
+    @PreAuthorize("hasAnyRole('GERENTE', 'ATENDENTE')")
+    public Pedido aplicarDesconto(String id, DescontoPedido desconto) {
+        Pedido pedido = pedidoRepository.findById(id)
+                .orElseThrow(() -> new RegraDaCasaException("Pedido não encontrado."));
+        int limite = limiteDesconto();
+        if (limite == 0) {
+            throw new RegraDaCasaException("Somente o GERENTE pode conceder desconto.");
+        }
+        if (desconto == null || desconto.percentual() == null
+                || desconto.percentual() < 0 || desconto.percentual() > limite) {
+            throw new RegraDaCasaException("O desconto deve ficar entre 0% e " + limite + "%.");
+        }
+        if (pedido.getStatus() == null || !pedido.getStatus().proximos().contains(StatusPedido.CANCELADO)) {
+            throw new RegraDaCasaException("Desconto só pode ser dado em pedido RECEBIDO, EM_PREPARACAO ou PRONTO.");
+        }
+        if (pedido.getSubtotal() == null) {
+            throw new RegraDaCasaException("Pedido sem valores calculados.");
+        }
+
+        pedido.setPercentualDesconto(desconto.percentual());
+        pedido.setValorDesconto(arredondar(pedido.getSubtotal() * desconto.percentual() / 100));
+        pedido.setValorTotal(arredondar(pedido.getSubtotal() - pedido.getValorDesconto()));
+        return pedidoRepository.save(pedido);
+    }
+
+    public int limiteDesconto() {
+        return usuarioLogado().getAuthorities().stream()
+                .map(a -> Perfil.valueOf(a.getAuthority().replace("ROLE_", "")).getLimiteDesconto())
+                .findFirst()
+                .orElse(0);
     }
 
     private Authentication usuarioLogado() {

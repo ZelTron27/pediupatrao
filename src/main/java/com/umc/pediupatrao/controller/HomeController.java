@@ -2,6 +2,7 @@ package com.umc.pediupatrao.controller;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import com.umc.pediupatrao.dto.DescontoPedido;
 import com.umc.pediupatrao.entity.Cliente;
 import com.umc.pediupatrao.entity.Pedido;
 import com.umc.pediupatrao.entity.Produto;
@@ -131,6 +132,7 @@ public class HomeController {
     public String pedidos(Model model) {
         List<Pedido> pedidos = pedidoService.listarPedidos();
         model.addAttribute("pedidos", pedidos);
+        model.addAttribute("limiteDesconto", pedidoService.limiteDesconto());
         model.addAttribute("content", "pedidos :: content");
         log.info("Carregando fragmento: pedidos :: content");
         return "layout";
@@ -166,6 +168,19 @@ public class HomeController {
         try {
             pedidoService.atualizarStatus(id, status, justificativa);
             redirectAttributes.addFlashAttribute("sucesso", "Status do pedido atualizado para " + status + ".");
+        } catch (RegraDaCasaException e) {
+            redirectAttributes.addFlashAttribute("erro", e.getMessage());
+        }
+        return "redirect:/pedidos";
+    }
+
+    @PostMapping("/pedidos/{id}/desconto")
+    public String aplicarDescontoPedido(@PathVariable String id,
+            @ModelAttribute DescontoPedido desconto,
+            RedirectAttributes redirectAttributes) {
+        try {
+            pedidoService.aplicarDesconto(id, desconto);
+            redirectAttributes.addFlashAttribute("sucesso", "Desconto de " + desconto.percentual() + "% aplicado ao pedido.");
         } catch (RegraDaCasaException e) {
             redirectAttributes.addFlashAttribute("erro", e.getMessage());
         }
