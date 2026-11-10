@@ -203,6 +203,13 @@ public class HomeController {
         return "layout";
     }
 
+    @GetMapping("/painel")
+    public String painel(Model model) {
+        model.addAttribute("statusPedido", StatusPedido.values());
+        model.addAttribute("content", "painel :: content");
+        return "layout";
+    }
+
     // ========================
     // PRODUTOS
     // ========================
