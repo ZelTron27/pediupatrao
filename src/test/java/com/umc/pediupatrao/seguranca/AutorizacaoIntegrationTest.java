@@ -353,6 +353,49 @@ class AutorizacaoIntegrationTest {
     }
 
     @Test
+    void painelDeVendasEhRestritoAAdminEGerente() throws Exception {
+        when(pedidoRepository.findAll()).thenReturn(List.of());
+
+        mvc.perform(get("/api/painel/resumo").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/painel").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/painel/vendas").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/painel/vendas").with(ADMIN)).andExpect(status().isOk());
+        mvc.perform(get("/api/painel/status").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/painel/status").with(GERENTE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.RECEBIDO").value(0));
+        mvc.perform(get("/api/painel/produtos").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/painel/produtos").with(GERENTE)).andExpect(status().isOk());
+        mvc.perform(get("/api/painel/movimento").with(ATENDENTE)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/painel/movimento").with(ADMIN))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.FRIDAY.length()").value(24));
+        mvc.perform(get("/api/painel/produtos").param("limite", "0").with(GERENTE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O ranking precisa de pelo menos 1 posição."));
+        mvc.perform(get("/api/painel/resumo").with(GERENTE))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pedidosFaturados").value(0));
+        mvc.perform(get("/painel").with(ADMIN)).andExpect(status().isOk());
+    }
+
+    @Test
+    void filtrosInvalidosDoPainelRespondemBadRequest() throws Exception {
+        mvc.perform(get("/api/painel/resumo").param("inicio", "2026-11-07").param("fim", "2026-11-01").with(GERENTE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O período informado termina antes de começar."));
+        mvc.perform(get("/api/painel/vendas").param("inicio", "07/11/2026").with(GERENTE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O parâmetro inicio recebeu um valor que não foi reconhecido."));
+        mvc.perform(get("/api/painel/status").param("status", "ENTREGUE").with(GERENTE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O parâmetro status recebeu um valor que não foi reconhecido."));
+        mvc.perform(get("/api/painel/produtos").param("limite", "abc").with(GERENTE))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.erro").value("O parâmetro limite recebeu um valor que não foi reconhecido."));
+    }
+
+    @Test
     void apiRespondeRegraVioladaComBadRequestEMensagem() throws Exception {
         mvc.perform(patch("/api/pedidos/p1/desconto").with(GERENTE).with(csrf())
                         .contentType(MediaType.APPLICATION_JSON).content("{\"percentual\":25}"))
