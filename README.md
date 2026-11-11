@@ -20,9 +20,10 @@ O projeto original já cadastrava clientes, produtos e pedidos. Nesta versão fo
 3. [Perfis e permissões](#perfis-e-permissões)
 4. [Requisitos implementados](#requisitos-implementados)
 5. [Principais alterações no código](#principais-alterações-no-código)
-6. [API](#api)
-7. [Testes](#testes)
-8. [Limitações conhecidas](#limitações-conhecidas)
+6. [Painel administrativo](#painel-administrativo)
+7. [API](#api)
+8. [Testes](#testes)
+9. [Limitações conhecidas](#limitações-conhecidas)
 
 ---
 
@@ -92,6 +93,7 @@ As senhas são gravadas criptografadas com BCrypt. Os usuários só são criados
 | Consultar clientes                         |       | X       | X         |
 | Cadastrar e alterar clientes               |       |         | X         |
 | Consultar a auditoria                      | X     | X       |           |
+| Consultar o painel de vendas               | X     | X       |           |
 
 As regras são aplicadas no backend em duas camadas:
 
@@ -190,6 +192,16 @@ Integridade e proteção dos dados:
 
 ---
 
+## Painel administrativo
+
+Tela `/painel`, disponível no menu lateral para ADMIN e GERENTE. Mostra indicadores de vendas, gráfico de movimento diário, situação dos pedidos, horários de pico e produtos mais vendidos, com filtros por período e status. Os dados vêm da API `/api/painel`, e a tela se atualiza sozinha a cada 30 segundos.
+
+- Documentação completa (requisitos, endpoints, decisões e evidências de testes): [docs/DASHBOARD.md](docs/DASHBOARD.md)
+- Vídeo de apresentação: [docs/video/PediuPatrao-VideoDash.mp4](docs/video/PediuPatrao-VideoDash.mp4)
+- Se o vídeo não abrir no GitHub, assista por este [link alternativo](https://organizacaomogiana-my.sharepoint.com/:v:/g/personal/11251405066_alunos_umc_br/IQBrSvSwnqObT5zTRUXv9XfBAfKJxqq3n0e7yGm8MCQWx7c?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=oPY8sk)
+
+---
+
 ## API
 
 Todas as rotas exigem login. Requisições que alteram dados precisam do token CSRF.
@@ -203,6 +215,7 @@ Todas as rotas exigem login. Requisições que alteram dados precisam do token C
 | GET    | `/api/clientes`                                           | GERENTE, ATENDENTE |
 | POST / PUT / DELETE | `/api/clientes`                                           | ATENDENTE          |
 | GET / POST / PUT / DELETE | `/api/usuarios`                                           | ADMIN              |
+| GET    | `/api/painel/resumo`, `/vendas`, `/status`, `/produtos`, `/movimento` | ADMIN, GERENTE |
 
 Respostas de erro:
 
@@ -222,9 +235,9 @@ Respostas de erro:
 ./mvnw test
 ```
 
-São 85 testes automatizados, todos passando:
+São 98 testes automatizados, todos passando:
 
-- **Unitários (JUnit 5 + Mockito):** regras de `PedidoService`, `UsuarioService`, `ClienteService`, `ProdutoService`, `TrilhaAuditoriaService` e `UsuarioDetailsService`.
+- **Unitários (JUnit 5 + Mockito):** regras de `PedidoService`, `UsuarioService`, `ClienteService`, `ProdutoService`, `TrilhaAuditoriaService`, `UsuarioDetailsService` e `PainelService`.
 - **Integração (`AutorizacaoIntegrationTest`):** sobe o Spring com a segurança real e o MockMvc, com os repositórios simulados (não precisa do MongoDB rodando). Verifica, entre outros:
   - ADMIN e ATENDENTE bloqueados ao cancelar ou dar desconto, pela API e pelo formulário;
   - limite de 20% e justificativa obrigatória;
