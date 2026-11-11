@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Painel</title>
+</head>
+<body>
+
+<div th:fragment="content">
+
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2 class="fw-bold mb-0">
+            <i class="bi bi-speedometer2 me-2 text-primary"></i>Painel
+        </h2>
+        <div class="d-flex align-items-center gap-3">
+            <small class="text-muted" id="ultimaAtualizacao"></small>
+            <button type="button" class="btn btn-outline-primary" id="atualizarPainel">
+                <i class="bi bi-arrow-clockwise me-1"></i> Atualizar
+            </button>
+        </div>
+    </div>
+
+    <div class="alert alert-danger d-none" id="erroPainel" role="alert">
+        <i class="bi bi-exclamation-triangle-fill me-2"></i>
+        <span></span>
+    </div>
+
+    <form id="filtrosPainel" class="card shadow-sm mb-4">
+        <div class="card-body row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small text-muted" for="inicio">De</label>
+                <input type="date" class="form-control" id="inicio" name="inicio">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted" for="fim">Até</label>
+                <input type="date" class="form-control" id="fim" name="fim">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label small text-muted" for="status">Status</label>
+                <select class="form-select" id="status" name="status">
+                    <option value="">Todos</option>
+                    <option th:each="s : ${statusPedido}"
+                            th:value="${s}" th:text="${s}"></option>
+                </select>
+            </div>
+            <div class="col-md-3 d-flex gap-2">
+                <button type="submit" class="btn btn-primary flex-fill">
+                    <i class="bi bi-funnel me-1"></i> Filtrar
+                </button>
+                <button type="reset" class="btn btn-outline-secondary">Limpar</button>
+            </div>
+        </div>
+    </form>
+
+    <div class="row g-3">
+        <div class="col-md">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Faturamento</div>
+                    <div class="fs-4 fw-bold" data-indicador="faturamento" data-formato="moeda">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Pedidos faturados</div>
+                    <div class="fs-4 fw-bold" data-indicador="pedidosFaturados">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Ticket médio</div>
+                    <div class="fs-4 fw-bold" data-indicador="ticketMedio" data-formato="moeda">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Cancelados</div>
+                    <div class="fs-4 fw-bold" data-indicador="cancelados">-</div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <div class="text-muted small">Total em descontos</div>
+                    <div class="fs-4 fw-bold" data-indicador="somaDescontos" data-formato="moeda">-</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row g-3 mt-2">
+        <div class="col-lg-8">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold">Movimento diário</h5>
+                    <canvas id="graficoVendas" height="120"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-body">
+                    <h5 class="fw-bold">Pedidos por etapa</h5>
+                    <canvas id="graficoStatus" height="220"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-4">
+        <div class="card-body">
+            <h5 class="fw-bold">Horários de pico</h5>
+            <p class="text-muted small">Pedidos recebidos em cada dia da semana e hora. Quanto mais forte a cor, maior o movimento.</p>
+            <div class="table-responsive">
+                <table class="table table-sm table-bordered text-center align-middle mb-0" id="mapaMovimento"></table>
+            </div>
+        </div>
+    </div>
+
+    <div class="card shadow-sm mt-4 mb-4">
+        <div class="card-body p-0">
+            <h5 class="fw-bold p-3 mb-0">Produtos campeões de venda</h5>
+            <table class="table table-hover align-middle mb-0">
+                <thead class="table-dark">
+                    <tr>
+                        <th class="ps-4">#</th>
+                        <th>Produto</th>
+                        <th>Unidades</th>
+                        <th>Receita</th>
+                    </tr>
+                </thead>
+                <tbody id="rankingProdutos"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script th:src="@{/plugins/chart.js/Chart.min.js}"></script>
+    <script>
+        const real = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
+        const formulario = document.getElementById('filtrosPainel');
+        const graficos = {};
+
+        function consultar(recurso) {
+            const filtros = new URLSearchParams();
+            new FormData(formulario).forEach((valor, nome) => valor && filtros.append(nome, valor));
+            return fetch('/api/painel/' + recurso + '?' + filtros).then(resposta => {
+                if (resposta.redirected) {
+                    throw new Error('Login expirado. Recarregue a página para entrar de novo.');
+                }
+                return resposta.json().catch(() => ({})).then(corpo => {
+                    if (!resposta.ok) {
+                        throw new Error(corpo.erro || 'Não foi possível carregar o painel.');
+                    }
+                    return corpo;
+                });
+            });
+        }
+
+        function mostrarErro(erro) {
+            const aviso = document.getElementById('erroPainel');
+            aviso.querySelector('span').textContent = erro.message || 'Não foi possível conectar à API.';
+            aviso.classList.remove('d-none');
+        }
+
+        function desenhar(id, configuracao) {
+            if (graficos[id]) {
+                graficos[id].destroy();
+            }
+            graficos[id] = new Chart(document.getElementById(id), configuracao);
+        }
+
+        function montarMapa(movimento) {
+            const nomes = { MONDAY: 'Seg', TUESDAY: 'Ter', WEDNESDAY: 'Qua', THURSDAY: 'Qui',
+                            FRIDAY: 'Sex', SATURDAY: 'Sáb', SUNDAY: 'Dom' };
+            const linhas = Object.values(movimento);
+            const horas = [...Array(24).keys()].filter(h => linhas.some(linha => linha[h] > 0));
+            const pico = Math.max(1, ...linhas.flat());
+            const mapa = document.getElementById('mapaMovimento');
+            mapa.innerHTML = '';
+            if (horas.length === 0) {
+                mapa.innerHTML = '<tr><td class="text-muted py-4">Sem pedidos neste recorte.</td></tr>';
+                return;
+            }
+            const cabecalho = mapa.createTHead().insertRow();
+            ['', ...horas.map(h => h + 'h')].forEach(texto => cabecalho.insertCell().textContent = texto);
+            const corpo = mapa.createTBody();
+            Object.entries(movimento).forEach(([dia, porHora]) => {
+                const linha = corpo.insertRow();
+                linha.insertCell().textContent = nomes[dia];
+                horas.forEach(h => {
+                    const celula = linha.insertCell();
+                    celula.textContent = porHora[h] || '';
+                    celula.style.backgroundColor = 'rgba(253, 126, 20, ' + (porHora[h] / pico).toFixed(2) + ')';
+                });
+            });
+        }
+
+        function carregarPainel() {
+            return Promise.all([
+                consultar('resumo').then(resumo => {
+                    document.querySelectorAll('[data-indicador]').forEach(el => {
+                        const valor = resumo[el.dataset.indicador];
+                        el.textContent = el.dataset.formato === 'moeda' ? real.format(valor) : valor;
+                    });
+                }),
+
+                consultar('vendas').then(dias => desenhar('graficoVendas', {
+                    type: 'bar',
+                    data: {
+                        labels: dias.map(d => d.dia.split('-').reverse().join('/')),
+                        datasets: [
+                            { label: 'Faturamento (R$)', data: dias.map(d => d.faturamento),
+                              backgroundColor: 'rgba(13, 110, 253, 0.6)', yAxisID: 'reais' },
+                            { label: 'Pedidos', data: dias.map(d => d.pedidos), type: 'line',
+                              borderColor: '#dc3545', fill: false, yAxisID: 'qtd' }
+                        ]
+                    },
+                    options: {
+                        scales: {
+                            yAxes: [
+                                { id: 'reais', position: 'left', ticks: { beginAtZero: true } },
+                                { id: 'qtd', position: 'right', ticks: { beginAtZero: true, precision: 0 },
+                                  gridLines: { drawOnChartArea: false } }
+                            ]
+                        }
+                    }
+                })),
+
+                consultar('status').then(contagem => desenhar('graficoStatus', {
+                    type: 'horizontalBar',
+                    data: {
+                        labels: Object.keys(contagem).map(s => s.replaceAll('_', ' ')),
+                        datasets: [{
+                            data: Object.values(contagem),
+                            backgroundColor: Object.keys(contagem)
+                                    .map(s => s === 'CANCELADO' ? '#dc3545' : 'rgba(13, 110, 253, 0.6)')
+                        }]
+                    },
+                    options: {
+                        legend: { display: false },
+                        scales: { xAxes: [{ ticks: { beginAtZero: true, precision: 0 } }] }
+                    }
+                })),
+
+                consultar('movimento').then(montarMapa),
+
+                consultar('produtos').then(produtos => {
+                    const corpo = document.getElementById('rankingProdutos');
+                    corpo.innerHTML = '';
+                    if (produtos.length === 0) {
+                        corpo.innerHTML = '<tr><td colspan="4" class="text-center text-muted py-4">Sem vendas de produtos neste recorte.</td></tr>';
+                        return;
+                    }
+                    produtos.forEach((p, posicao) => {
+                        const linha = corpo.insertRow();
+                        [posicao + 1 + 'º', p.nome, p.unidades, real.format(p.receita)]
+                            .forEach(valor => linha.insertCell().textContent = valor);
+                        linha.cells[0].classList.add('ps-4');
+                    });
+                })
+            ]).then(() => {
+                document.getElementById('erroPainel').classList.add('d-none');
+                document.getElementById('ultimaAtualizacao').textContent =
+                        'Última leitura: ' + new Date().toLocaleTimeString('pt-BR');
+            }).catch(mostrarErro);
+        }
+
+        formulario.addEventListener('submit', evento => {
+            evento.preventDefault();
+            carregarPainel();
+        });
+        formulario.addEventListener('reset', () => setTimeout(carregarPainel));
+        document.getElementById('atualizarPainel').addEventListener('click', carregarPainel);
+        setInterval(carregarPainel, 30000);
+        carregarPainel();
+    </script>
+</div>
+
+</body>
+</html>
