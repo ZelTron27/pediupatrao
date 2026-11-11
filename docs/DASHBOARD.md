@@ -274,7 +274,11 @@ Com a aplicação rodando e o MongoDB local, logado como `gerente`:
 
 O acesso negado ao `ATENDENTE` e o menu por perfil são verificados pelos testes de integração da seção anterior.
 
-## 6. Como executar
+## 6. Vídeo de apresentação
+
+Demonstração do painel funcionando e justificativa das principais decisões de análise e projeto (cerca de 2 minutos): [video/PediuPatrao-VideoDash.mp4](video/PediuPatrao-VideoDash.mp4).
+
+## 7. Como executar
 
 1. Iniciar o MongoDB em `mongodb://127.0.0.1:27017`.
 2. Rodar a aplicação: `mvnw spring-boot:run`.
