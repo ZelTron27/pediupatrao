@@ -278,6 +278,8 @@ O acesso negado ao `ATENDENTE` e o menu por perfil são verificados pelos testes
 
 Demonstração do painel funcionando e justificativa das principais decisões de análise e projeto (cerca de 2 minutos): [video/PediuPatrao-VideoDash.mp4](video/PediuPatrao-VideoDash.mp4).
 
+Se o vídeo não abrir no GitHub, ele também está disponível neste [link alternativo](https://organizacaomogiana-my.sharepoint.com/:v:/g/personal/11251405066_alunos_umc_br/IQBrSvSwnqObT5zTRUXv9XfBAfKJxqq3n0e7yGm8MCQWx7c?nav=eyJyZWZlcnJhbEluZm8iOnsicmVmZXJyYWxBcHAiOiJPbmVEcml2ZUZvckJ1c2luZXNzIiwicmVmZXJyYWxBcHBQbGF0Zm9ybSI6IldlYiIsInJlZmVycmFsTW9kZSI6InZpZXciLCJyZWZlcnJhbFZpZXciOiJNeUZpbGVzTGlua0NvcHkifX0&e=oPY8sk).
+
 ## 7. Como executar
 
 1. Iniciar o MongoDB em `mongodb://127.0.0.1:27017`.
